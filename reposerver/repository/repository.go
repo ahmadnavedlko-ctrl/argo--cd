@@ -1864,7 +1864,7 @@ func GenerateManifests(ctx context.Context, appPath, repoRoot, revision string, 
 func newEnv(q *apiclient.ManifestRequest, revision string) *v1alpha1.Env {
 	shortRevision := shortenRevision(revision, 7)
 	shortRevision8 := shortenRevision(revision, 8)
-	return &v1alpha1.Env{
+	env := &v1alpha1.Env{
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_NAME", Value: q.AppName},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_NAMESPACE", Value: q.Namespace},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_PROJECT_NAME", Value: q.ProjectName},
@@ -1874,6 +1874,24 @@ func newEnv(q *apiclient.ManifestRequest, revision string) *v1alpha1.Env {
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_REPO_URL", Value: q.Repo.Repo},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_PATH", Value: q.ApplicationSource.Path},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_TARGET_REVISION", Value: q.ApplicationSource.TargetRevision},
+	}
+	*env = append(*env, appProjectEnv(q)...)
+	return env
+}
+
+// appProjectEnv returns the project-scoped build environment variables exposed
+// to manifest generation. This lets users template on the app's project (for
+// per-project labels, defaults, and the like) from Helm values, plugin env, or
+// jsonnet. When the request carries no project name (e.g. repo-server
+// app-details lookups) it falls back to the default project so rendering never
+// observes an empty value.
+func appProjectEnv(q *apiclient.ManifestRequest) []*v1alpha1.EnvEntry {
+	project := q.ProjectName
+	if project == "" {
+		project = v1alpha1.DefaultAppProjectName
+	}
+	return []*v1alpha1.EnvEntry{
+		{Name: "ARGOCD_APP_PROJECT", Value: project},
 	}
 }
 

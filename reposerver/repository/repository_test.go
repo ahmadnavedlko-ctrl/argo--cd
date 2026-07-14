@@ -2078,6 +2078,7 @@ func Test_newEnv(t *testing.T) {
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_REPO_URL", Value: "https://github.com/my-org/my-repo"},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_PATH", Value: "my-path"},
 		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_SOURCE_TARGET_REVISION", Value: "my-target-revision"},
+		&v1alpha1.EnvEntry{Name: "ARGOCD_APP_PROJECT", Value: "my-project-name"},
 	}, newEnv(&apiclient.ManifestRequest{
 		AppName:     "my-app-name",
 		Namespace:   "my-namespace",
@@ -2088,6 +2089,21 @@ func Test_newEnv(t *testing.T) {
 			TargetRevision: "my-target-revision",
 		},
 	}, "my-revision"))
+}
+
+func Test_appProjectEnv(t *testing.T) {
+	t.Run("uses the request project", func(t *testing.T) {
+		env := appProjectEnv(&apiclient.ManifestRequest{ProjectName: "my-project-name"})
+		assert.Equal(t, []*v1alpha1.EnvEntry{
+			{Name: "ARGOCD_APP_PROJECT", Value: "my-project-name"},
+		}, env)
+	})
+	t.Run("falls back to the default project when unset", func(t *testing.T) {
+		env := appProjectEnv(&apiclient.ManifestRequest{})
+		assert.Equal(t, []*v1alpha1.EnvEntry{
+			{Name: "ARGOCD_APP_PROJECT", Value: "default"},
+		}, env)
+	})
 }
 
 func TestService_newHelmClientResolveRevision(t *testing.T) {
